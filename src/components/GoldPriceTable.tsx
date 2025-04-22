@@ -8,7 +8,6 @@ import {
   Button,
   Icon,
   useColorModeValue,
-  Badge,
   Flex,
   Tooltip,
   SimpleGrid,
