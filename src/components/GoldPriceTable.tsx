@@ -569,7 +569,6 @@ export const GoldPriceTable = () => {
                 >
                   {t.lastUpdated}: {lastUpdated.toLocaleString()}
                 </Text>
-                <Badge colorScheme="green">{t.live}</Badge>
               </Flex>
             </Box>
             <Flex gap={3}>
