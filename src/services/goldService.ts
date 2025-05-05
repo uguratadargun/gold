@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const CORS_PROXY = "https://api.codetabs.com/v1/proxy?quest=";
+const CORS_PROXY = "https://api.allorigins.win/raw?url=";
 const GOLD_URL = "https://www.altinkaynak.com/Altin/Kur/Guncel";
 
 export interface GoldPrice {
