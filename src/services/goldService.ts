@@ -9,6 +9,12 @@ export interface GoldPrice {
   selling: string;
 }
 
+const GOLD_ORDER: Record<string, number> = {
+  "Gram Altın": 1,
+  "Çeyrek Altın": 2,
+  "Yarım Altın": 3,
+};
+
 export const fetchGoldPrices = async (): Promise<GoldPrice[]> => {
   try {
     const response = await axios.get(
@@ -31,7 +37,12 @@ export const fetchGoldPrices = async (): Promise<GoldPrice[]> => {
       }
     });
 
-    return prices;
+    // Sort the prices according to the specified order
+    return prices.sort((a, b) => {
+      const orderA = GOLD_ORDER[a.type] || Number.MAX_SAFE_INTEGER;
+      const orderB = GOLD_ORDER[b.type] || Number.MAX_SAFE_INTEGER;
+      return orderA - orderB;
+    });
   } catch (error) {
     console.error("Error fetching gold prices:", error);
     return [];
