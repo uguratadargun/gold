@@ -1,7 +1,10 @@
 import axios from "axios";
 
-const GOLD_API_URL = "https://static.altinkaynak.com/Gold";
-const CURRENCY_API_URL = "https://static.altinkaynak.com/Currency";
+// API URLs - always use our backend API endpoints
+// Development: Vite proxy -> Altinkaynak API
+// Production: Vercel serverless functions -> Altinkaynak API
+const GOLD_API_URL = "/api/gold";
+const CURRENCY_API_URL = "/api/currency";
 
 // Base API response interface
 export interface ApiResponse {
