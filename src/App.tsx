@@ -1,11 +1,11 @@
 import { ChakraProvider, Box } from "@chakra-ui/react";
-import { GoldPriceTable } from "./components/GoldPriceTable";
+import { PriceTracker } from "./components/PriceTracker";
 
 function App() {
   return (
     <ChakraProvider>
       <Box minH="100vh" bg="gray.50">
-        <GoldPriceTable />
+        <PriceTracker />
       </Box>
     </ChakraProvider>
   );

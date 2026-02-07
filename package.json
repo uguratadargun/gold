@@ -1,6 +1,6 @@
 {
-  "name": "gold-price-tracker",
-  "version": "0.0.0",
+  "name": "gold-currency-tracker",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",

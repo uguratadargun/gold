@@ -37,8 +37,17 @@ import {
   Stack,
   Divider,
   useColorMode,
+  Tabs,
+  TabList,
+  TabPanels,
+  Tab,
+  TabPanel,
 } from "@chakra-ui/react";
-import { fetchGoldPrices, GoldPrice } from "../services/goldService";
+import {
+  fetchGoldPrices,
+  fetchCurrencyPrices,
+  PriceDisplay,
+} from "../services/priceService";
 import { FaCalculator, FaSun, FaMoon } from "react-icons/fa";
 import { motion } from "framer-motion";
 
@@ -47,7 +56,9 @@ const MotionBox = motion(Box);
 // Translations
 const translations = {
   tr: {
-    title: "Altın Fiyatları",
+    title: "Altın ve Döviz Fiyatları",
+    goldTab: "Altın",
+    currencyTab: "Döviz",
     lastUpdated: "Son güncelleme",
     live: "Canlı",
     refresh: "Yenile",
@@ -58,14 +69,21 @@ const translations = {
     buyPrice: "Alış Fiyatı",
     sellPrice: "Satış Fiyatı",
     goldTransactionCalculator: "Altın İşlem Hesaplayıcı",
+    currencyTransactionCalculator: "Döviz İşlem Hesaplayıcı",
     transactionType: "İşlem Türü",
     buyGold: "Altın Al",
     sellGold: "Altın Sat",
+    buyCurrency: "Döviz Al",
+    sellCurrency: "Döviz Sat",
     goldItems: "Altın Öğeleri",
+    currencyItems: "Döviz Öğeleri",
     addItem: "Öğe Ekle",
     noItems: 'Öğe eklenmedi. Başlamak için "Öğe Ekle"ye tıklayın.',
     goldType: "Altın Türü",
-    amount: "Miktar (gram)",
+    currencyType: "Döviz Türü",
+    amount: "Miktar",
+    amountGram: "Miktar (gram)",
+    amountCurrency: "Miktar",
     cost: "Maliyet",
     value: "Değer",
     totalCost: "Toplam Maliyet",
@@ -74,19 +92,21 @@ const translations = {
     youWillReceive: "Alacağınız miktar",
     forYourGoldPurchase: "altın alımınız için",
     forYourGoldSale: "altın satışınız için",
+    forYourCurrencyPurchase: "döviz alımınız için",
+    forYourCurrencySale: "döviz satışınız için",
     close: "Kapat",
     pricesUpdated: "Fiyatlar Güncellendi",
-    goldPricesRefreshed: "Altın fiyatları yenilendi",
+    goldPricesRefreshed: "Fiyatlar yenilendi",
     error: "Hata",
-    failedToFetch: "Altın fiyatları alınamadı",
+    failedToFetch: "Fiyatlar alınamadı",
   },
 };
 
-const GoldCard = ({
+const PriceCard = ({
   price,
   t,
 }: {
-  price: GoldPrice;
+  price: PriceDisplay;
   t: typeof translations.tr;
 }) => {
   const cardBg = useColorModeValue("white", "gray.900");
@@ -147,11 +167,13 @@ const CalculatorModal = ({
   isOpen,
   onClose,
   prices,
+  isGold,
   t,
 }: {
   isOpen: boolean;
   onClose: () => void;
-  prices: GoldPrice[];
+  prices: PriceDisplay[];
+  isGold: boolean;
   t: typeof translations.tr;
 }) => {
   const [transactionType, setTransactionType] = useState<"buy" | "sell">("buy");
@@ -160,14 +182,38 @@ const CalculatorModal = ({
   >([]);
   const [result, setResult] = useState<number | null>(null);
 
-  // Reset calculator when modal is closed
+  // Color mode values - hepsini en başta tanımla
+  const modalBg = useColorModeValue("white", "gray.900");
+  const headerColor = useColorModeValue("gray.700", "white");
+  const closeButtonColor = useColorModeValue("gray.500", "gray.300");
+  const labelColor = useColorModeValue("gray.700", "gray.300");
+  const radioColorScheme = useColorModeValue("blue", "green");
+  const dividerColor = useColorModeValue("gray.200", "gray.700");
+  const textColor = useColorModeValue("gray.700", "white");
+  const buttonColorScheme = useColorModeValue("blue", "green");
+  const itemTextColor = useColorModeValue("gray.500", "gray.400");
+  const itemBg = useColorModeValue("white", "gray.800");
+  const itemBorderColor = useColorModeValue("gray.200", "gray.700");
+  const selectBg = useColorModeValue("white", "gray.700");
+  const selectColor = useColorModeValue("gray.800", "white");
+  const selectBorderColor = useColorModeValue("gray.300", "gray.600");
+  const selectHoverBorderColor = useColorModeValue("gray.400", "gray.500");
+  const selectFocusBorderColor = useColorModeValue("blue.500", "green.500");
+  const stepperColor = useColorModeValue("gray.600", "gray.300");
+  const costBg = useColorModeValue("gray.50", "gray.700");
+  const costTextColor = useColorModeValue("gray.700", "gray.200");
+  const resultBg = useColorModeValue("gray.50", "gray.700");
+  const resultTextColor = useColorModeValue("gray.700", "white");
+  const resultSubTextColor = useColorModeValue("gray.500", "gray.400");
+
+  // Reset calculator when modal is closed or tab changes
   useEffect(() => {
     if (!isOpen) {
       setTransactionType("buy");
       setSelectedItems([]);
       setResult(null);
     }
-  }, [isOpen]);
+  }, [isOpen, isGold]);
 
   const addItem = () => {
     setSelectedItems([...selectedItems, { type: "", amount: 1 }]);
@@ -229,15 +275,15 @@ const CalculatorModal = ({
   return (
     <Modal isOpen={isOpen} onClose={onClose} size="lg">
       <ModalOverlay backdropFilter="blur(4px)" />
-      <ModalContent bg={useColorModeValue("white", "gray.900")}>
-        <ModalHeader color={useColorModeValue("gray.700", "white")}>
-          {t.goldTransactionCalculator}
+      <ModalContent bg={modalBg}>
+        <ModalHeader color={headerColor}>
+          {isGold ? t.goldTransactionCalculator : t.currencyTransactionCalculator}
         </ModalHeader>
-        <ModalCloseButton color={useColorModeValue("gray.500", "gray.300")} />
+        <ModalCloseButton color={closeButtonColor} />
         <ModalBody>
           <Stack spacing={4}>
             <FormControl>
-              <FormLabel color={useColorModeValue("gray.700", "gray.300")}>
+              <FormLabel color={labelColor}>
                 {t.transactionType}
               </FormLabel>
               <RadioGroup
@@ -247,35 +293,26 @@ const CalculatorModal = ({
                 }
               >
                 <Stack direction="row">
-                  <Radio
-                    value="buy"
-                    colorScheme={useColorModeValue("blue", "green")}
-                  >
-                    {t.buyGold}
+                  <Radio value="buy" colorScheme={radioColorScheme}>
+                    {isGold ? t.buyGold : t.buyCurrency}
                   </Radio>
-                  <Radio
-                    value="sell"
-                    colorScheme={useColorModeValue("blue", "green")}
-                  >
-                    {t.sellGold}
+                  <Radio value="sell" colorScheme={radioColorScheme}>
+                    {isGold ? t.sellGold : t.sellCurrency}
                   </Radio>
                 </Stack>
               </RadioGroup>
             </FormControl>
 
-            <Divider borderColor={useColorModeValue("gray.200", "gray.700")} />
+            <Divider borderColor={dividerColor} />
 
             <Box>
               <Flex justify="space-between" align="center" mb={2}>
-                <Text
-                  fontWeight="bold"
-                  color={useColorModeValue("gray.700", "white")}
-                >
-                  {t.goldItems}
+                <Text fontWeight="bold" color={textColor}>
+                  {isGold ? t.goldItems : t.currencyItems}
                 </Text>
                 <Button
                   size="sm"
-                  colorScheme={useColorModeValue("blue", "green")}
+                  colorScheme={buttonColorScheme}
                   onClick={addItem}
                 >
                   {t.addItem}
@@ -283,11 +320,7 @@ const CalculatorModal = ({
               </Flex>
 
               {selectedItems.length === 0 ? (
-                <Text
-                  color={useColorModeValue("gray.500", "gray.400")}
-                  textAlign="center"
-                  py={4}
-                >
+                <Text color={itemTextColor} textAlign="center" py={4}>
                   {t.noItems}
                 </Text>
               ) : (
@@ -299,8 +332,8 @@ const CalculatorModal = ({
                       borderWidth="1px"
                       borderRadius="md"
                       position="relative"
-                      bg={useColorModeValue("white", "gray.800")}
-                      borderColor={useColorModeValue("gray.200", "gray.700")}
+                      bg={itemBg}
+                      borderColor={itemBorderColor}
                     >
                       <Button
                         size="xs"
@@ -315,34 +348,23 @@ const CalculatorModal = ({
 
                       <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
                         <FormControl>
-                          <FormLabel
-                            color={useColorModeValue("gray.700", "gray.300")}
-                          >
-                            {t.goldType}
+                          <FormLabel color={labelColor}>
+                            {isGold ? t.goldType : t.currencyType}
                           </FormLabel>
                           <Select
-                            placeholder={t.goldType}
+                            placeholder={isGold ? t.goldType : t.currencyType}
                             value={item.type}
                             onChange={(e) =>
                               updateItem(index, "type", e.target.value)
                             }
-                            bg={useColorModeValue("white", "gray.700")}
-                            color={useColorModeValue("gray.800", "white")}
-                            borderColor={useColorModeValue(
-                              "gray.300",
-                              "gray.600"
-                            )}
+                            bg={selectBg}
+                            color={selectColor}
+                            borderColor={selectBorderColor}
                             _hover={{
-                              borderColor: useColorModeValue(
-                                "gray.400",
-                                "gray.500"
-                              ),
+                              borderColor: selectHoverBorderColor,
                             }}
                             _focus={{
-                              borderColor: useColorModeValue(
-                                "blue.500",
-                                "green.500"
-                              ),
+                              borderColor: selectFocusBorderColor,
                             }}
                           >
                             {prices.map((price, idx) => (
@@ -354,10 +376,8 @@ const CalculatorModal = ({
                         </FormControl>
 
                         <FormControl>
-                          <FormLabel
-                            color={useColorModeValue("gray.700", "gray.300")}
-                          >
-                            {t.amount}
+                          <FormLabel color={labelColor}>
+                            {isGold ? t.amountGram : t.amountCurrency}
                           </FormLabel>
                           <NumberInput
                             min={1}
@@ -368,54 +388,27 @@ const CalculatorModal = ({
                             }
                           >
                             <NumberInputField
-                              bg={useColorModeValue("white", "gray.700")}
-                              color={useColorModeValue("gray.800", "white")}
-                              borderColor={useColorModeValue(
-                                "gray.300",
-                                "gray.600"
-                              )}
+                              bg={selectBg}
+                              color={selectColor}
+                              borderColor={selectBorderColor}
                               _hover={{
-                                borderColor: useColorModeValue(
-                                  "gray.400",
-                                  "gray.500"
-                                ),
+                                borderColor: selectHoverBorderColor,
                               }}
                               _focus={{
-                                borderColor: useColorModeValue(
-                                  "blue.500",
-                                  "green.500"
-                                ),
+                                borderColor: selectFocusBorderColor,
                               }}
                             />
                             <NumberInputStepper>
-                              <NumberIncrementStepper
-                                color={useColorModeValue(
-                                  "gray.600",
-                                  "gray.300"
-                                )}
-                              />
-                              <NumberDecrementStepper
-                                color={useColorModeValue(
-                                  "gray.600",
-                                  "gray.300"
-                                )}
-                              />
+                              <NumberIncrementStepper color={stepperColor} />
+                              <NumberDecrementStepper color={stepperColor} />
                             </NumberInputStepper>
                           </NumberInput>
                         </FormControl>
                       </SimpleGrid>
 
                       {item.type && item.amount > 0 && (
-                        <Box
-                          mt={2}
-                          p={2}
-                          bg={useColorModeValue("gray.50", "gray.700")}
-                          borderRadius="md"
-                        >
-                          <Text
-                            fontSize="sm"
-                            color={useColorModeValue("gray.700", "gray.200")}
-                          >
+                        <Box mt={2} p={2} bg={costBg} borderRadius="md">
+                          <Text fontSize="sm" color={costTextColor}>
                             {transactionType === "buy" ? t.cost : t.value}:{" "}
                             {(() => {
                               const selectedPrice = prices.find(
@@ -453,19 +446,11 @@ const CalculatorModal = ({
               )}
             </Box>
 
-            <Divider borderColor={useColorModeValue("gray.200", "gray.700")} />
+            <Divider borderColor={dividerColor} />
 
             {result !== null && result > 0 && (
-              <Box
-                p={4}
-                bg={useColorModeValue("gray.50", "gray.700")}
-                borderRadius="md"
-              >
-                <Text
-                  fontWeight="bold"
-                  mb={2}
-                  color={useColorModeValue("gray.700", "white")}
-                >
+              <Box p={4} bg={resultBg} borderRadius="md">
+                <Text fontWeight="bold" mb={2} color={resultTextColor}>
                   {transactionType === "buy" ? t.totalCost : t.totalValue}:
                 </Text>
                 <Text
@@ -477,31 +462,23 @@ const CalculatorModal = ({
                     currency: "TRY",
                   })}
                 </Text>
-                <Text
-                  fontSize="sm"
-                  color={useColorModeValue("gray.500", "gray.400")}
-                  mt={2}
-                >
+                <Text fontSize="sm" color={resultSubTextColor} mt={2}>
                   {transactionType === "buy"
                     ? `${t.youWillPay} ${result.toLocaleString("tr-TR", {
                         style: "currency",
                         currency: "TRY",
-                      })} ${t.forYourGoldPurchase}`
+                      })} ${isGold ? t.forYourGoldPurchase : t.forYourCurrencyPurchase}`
                     : `${t.youWillReceive} ${result.toLocaleString("tr-TR", {
                         style: "currency",
                         currency: "TRY",
-                      })} ${t.forYourGoldSale}`}
+                      })} ${isGold ? t.forYourGoldSale : t.forYourCurrencySale}`}
                 </Text>
               </Box>
             )}
           </Stack>
         </ModalBody>
         <ModalFooter>
-          <Button
-            colorScheme={useColorModeValue("blue", "green")}
-            mr={3}
-            onClick={onClose}
-          >
+          <Button colorScheme={buttonColorScheme} mr={3} onClick={onClose}>
             {t.close}
           </Button>
         </ModalFooter>
@@ -510,13 +487,31 @@ const CalculatorModal = ({
   );
 };
 
-export const GoldPriceTable = () => {
-  const [prices, setPrices] = useState<GoldPrice[]>([]);
+export const PriceTracker = () => {
+  const [goldPrices, setGoldPrices] = useState<PriceDisplay[]>([]);
+  const [currencyPrices, setCurrencyPrices] = useState<PriceDisplay[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
   const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [activeTab, setActiveTab] = useState(0); // 0: Altın, 1: Döviz
   const { isOpen, onOpen, onClose } = useDisclosure();
   const { colorMode, toggleColorMode } = useColorMode();
+
+  // Tüm color mode values'ları en başta tanımla
+  const bgColor = useColorModeValue("gray.50", "gray.900");
+  const headingColor = useColorModeValue("gray.800", "white");
+  const textColor = useColorModeValue("gray.500", "gray.400");
+  const buttonColor = useColorModeValue("gray.700", "white");
+  const buttonBorderColor = useColorModeValue("gray.300", "gray.600");
+  const buttonHoverBg = useColorModeValue("gray.50", "gray.700");
+  const purpleColor = useColorModeValue("purple.600", "pink.300");
+  const purpleBorderColor = useColorModeValue("purple.300", "pink.700");
+  const purpleHoverBg = useColorModeValue("purple.50", "pink.900");
+  const spinnerColor = useColorModeValue("blue.500", "cyan.400");
+  const tabColorScheme = useColorModeValue("blue", "green");
+  const tabSelectedColor = useColorModeValue("blue.600", "green.400");
+  const tabSelectedBorderColor = useColorModeValue("blue.600", "green.400");
+  const tabSelectedBorderBottomColor = useColorModeValue("white", "gray.900");
 
   const t = translations.tr;
 
@@ -525,11 +520,15 @@ export const GoldPriceTable = () => {
       if (showLoading) {
         setLoading(true);
       }
-      const data = await fetchGoldPrices();
-      setPrices(data);
+      const [goldData, currencyData] = await Promise.all([
+        fetchGoldPrices(),
+        fetchCurrencyPrices(),
+      ]);
+      setGoldPrices(goldData);
+      setCurrencyPrices(currencyData);
       setLastUpdated(new Date());
     } catch (error) {
-      console.error("Error fetching gold prices:", error);
+      console.error("Error fetching prices:", error);
     } finally {
       setLoading(false);
       setIsInitialLoad(false);
@@ -544,7 +543,7 @@ export const GoldPriceTable = () => {
   }, []);
 
   return (
-    <Box minH="100vh" bg={useColorModeValue("gray.50", "gray.900")} py={8}>
+    <Box minH="100vh" bg={bgColor} py={8}>
       <Container maxW="container.xl">
         <MotionBox
           initial={{ opacity: 0, y: -20 }}
@@ -553,19 +552,11 @@ export const GoldPriceTable = () => {
         >
           <Flex justifyContent="space-between" alignItems="center" mb={8}>
             <Box>
-              <Heading
-                as="h1"
-                size="xl"
-                mb={2}
-                color={useColorModeValue("gray.800", "white")}
-              >
+              <Heading as="h1" size="xl" mb={2} color={headingColor}>
                 {t.title}
               </Heading>
               <Flex alignItems="center" gap={2}>
-                <Text
-                  color={useColorModeValue("gray.500", "gray.400")}
-                  fontSize="sm"
-                >
+                <Text color={textColor} fontSize="sm">
                   {t.lastUpdated}: {lastUpdated.toLocaleString()}
                 </Text>
               </Flex>
@@ -578,9 +569,9 @@ export const GoldPriceTable = () => {
                   size="sm"
                   variant="outline"
                   onClick={toggleColorMode}
-                  color={useColorModeValue("gray.700", "white")}
-                  borderColor={useColorModeValue("gray.300", "gray.600")}
-                  _hover={{ bg: useColorModeValue("gray.50", "gray.700") }}
+                  color={buttonColor}
+                  borderColor={buttonBorderColor}
+                  _hover={{ bg: buttonHoverBg }}
                   w="32px"
                   h="32px"
                   p="0"
@@ -600,9 +591,9 @@ export const GoldPriceTable = () => {
                   variant="outline"
                   size="sm"
                   onClick={onOpen}
-                  color={useColorModeValue("purple.600", "pink.300")}
-                  borderColor={useColorModeValue("purple.300", "pink.700")}
-                  _hover={{ bg: useColorModeValue("purple.50", "pink.900") }}
+                  color={purpleColor}
+                  borderColor={purpleBorderColor}
+                  _hover={{ bg: purpleHoverBg }}
                 >
                   {t.calculator}
                 </Button>
@@ -613,31 +604,77 @@ export const GoldPriceTable = () => {
 
         {isInitialLoad && loading ? (
           <Flex justify="center" align="center" minH="300px">
-            <Spinner
-              size="xl"
-              color={useColorModeValue("blue.500", "cyan.400")}
-              thickness="4px"
-            />
+            <Spinner size="xl" color={spinnerColor} thickness="4px" />
           </Flex>
         ) : (
-          <SimpleGrid
-            columns={{ base: 1, md: 2, lg: 3 }}
-            spacing={6}
-            as={motion.div}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: "0.5s", delay: "0.2s" }}
+          <Tabs
+            colorScheme={tabColorScheme}
+            variant="enclosed"
+            index={activeTab}
+            onChange={(index) => setActiveTab(index)}
           >
-            {prices.map((price, index) => (
-              <GoldCard key={index} price={price} t={t} />
-            ))}
-          </SimpleGrid>
+            <TabList mb={6}>
+              <Tab
+                _selected={{
+                  color: tabSelectedColor,
+                  borderColor: tabSelectedBorderColor,
+                  borderBottomColor: tabSelectedBorderBottomColor,
+                }}
+                fontWeight="bold"
+              >
+                {t.goldTab}
+              </Tab>
+              <Tab
+                _selected={{
+                  color: tabSelectedColor,
+                  borderColor: tabSelectedBorderColor,
+                  borderBottomColor: tabSelectedBorderBottomColor,
+                }}
+                fontWeight="bold"
+              >
+                {t.currencyTab}
+              </Tab>
+            </TabList>
+
+            <TabPanels>
+              <TabPanel p={0}>
+                <SimpleGrid
+                  columns={{ base: 1, md: 2, lg: 3 }}
+                  spacing={6}
+                  as={motion.div}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: "0.5s", delay: "0.2s" }}
+                >
+                  {goldPrices.map((price, index) => (
+                    <PriceCard key={index} price={price} t={t} />
+                  ))}
+                </SimpleGrid>
+              </TabPanel>
+
+              <TabPanel p={0}>
+                <SimpleGrid
+                  columns={{ base: 1, md: 2, lg: 3 }}
+                  spacing={6}
+                  as={motion.div}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: "0.5s", delay: "0.2s" }}
+                >
+                  {currencyPrices.map((price, index) => (
+                    <PriceCard key={index} price={price} t={t} />
+                  ))}
+                </SimpleGrid>
+              </TabPanel>
+            </TabPanels>
+          </Tabs>
         )}
 
         <CalculatorModal
           isOpen={isOpen}
           onClose={onClose}
-          prices={prices}
+          prices={activeTab === 0 ? goldPrices : currencyPrices}
+          isGold={activeTab === 0}
           t={t}
         />
       </Container>
